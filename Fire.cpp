@@ -1,13 +1,39 @@
+#include <vector>
 #include "Fire.h"
+#include "random.h"
 using namespace std;
 
 void updateFire(Grid<int>& fire) {
-    /* TODO: The next line just exists to make sure you don't get compiler warning messages
-     * when this function isn't implemented. Delete this comment and the next line, then
-     * implement this function.
-     */
-    (void) fire;
+    int rows = fire.numRows();
+    int cols = fire.numCols();
+    Grid<int> newFire = fire;
+
+    for (int row = rows - 2; row >= 0; row--) {
+        for (int col = 0; col < cols; col++) {
+            int value = fire[row + 1][col];
+
+            // Build possible target columns
+            Vector<int> options;
+            if (col > 0) options.add(col - 1);
+            options.add(col);
+            if (col < cols - 1) options.add(col + 1);
+
+            // Randomly select target column
+            int targetCol = options[randomInteger(0, options.size() - 1)];
+
+            // Apply cooling (2/3 chance)
+            if (randomChance(2.0 / 3.0) && value > 0) {
+                value--;
+            }
+
+            // Update the target cell (allow zeros to overwrite)
+            newFire[row][targetCol] = value;
+        }
+    }
+
+    fire = newFire;
 }
+
 
 
 /* * * * * * Provided Test Cases * * * * * */
@@ -47,15 +73,15 @@ PROVIDED_TEST("updateFire does not change bottom row.") {
 }
 
 namespace {
-    /* Helper function to test if the specified value matches one of the items
+/* Helper function to test if the specified value matches one of the items
      * from the given list.
      */
-    bool isOneOf(int) {
-        return false;
-    }
-    template <typename First, typename... Rest> bool isOneOf(int value, First option1, Rest... remaining) {
-        return value == option1 || isOneOf(value, remaining...);
-    }
+bool isOneOf(int) {
+    return false;
+}
+template <typename First, typename... Rest> bool isOneOf(int value, First option1, Rest... remaining) {
+    return value == option1 || isOneOf(value, remaining...);
+}
 }
 
 PROVIDED_TEST("updateFire copies heat values upward.") {
@@ -224,30 +250,30 @@ PROVIDED_TEST("updateFire shifts values horizontally with the correct probabilit
 
     /* Run the experiment and see how it goes. */
     if (!ChiSquaredTesting::isClose({ leftProb, centerProb, rightProb, noneProb }, [&] {
-        /* Clone the original fire and update it. */
-        auto fire = pattern;
-        updateFire(fire);
+            /* Clone the original fire and update it. */
+            auto fire = pattern;
+            updateFire(fire);
 
-        /* Confirm the border regions are all zeros. */
-        EXPECT_EQUAL(fire[0][0], 0);
-        EXPECT_EQUAL(fire[0][1], 0);
-        EXPECT_EQUAL(fire[0][5], 0);
-        EXPECT_EQUAL(fire[0][6], 0);
+            /* Confirm the border regions are all zeros. */
+            EXPECT_EQUAL(fire[0][0], 0);
+            EXPECT_EQUAL(fire[0][1], 0);
+            EXPECT_EQUAL(fire[0][5], 0);
+            EXPECT_EQUAL(fire[0][6], 0);
 
-        /* At most one of the central values should be nonzero. */
-        int nonzero = 0;
-        if (fire[0][2] != 0) nonzero++;
-        if (fire[0][3] != 0) nonzero++;
-        if (fire[0][4] != 0) nonzero++;
+            /* At most one of the central values should be nonzero. */
+            int nonzero = 0;
+            if (fire[0][2] != 0) nonzero++;
+            if (fire[0][3] != 0) nonzero++;
+            if (fire[0][4] != 0) nonzero++;
 
-        EXPECT(isOneOf(nonzero, 0, 1));
+            EXPECT(isOneOf(nonzero, 0, 1));
 
-        /* See which type it is. */
-        if      (fire[0][2] != 0) return 0;
-        else if (fire[0][3] != 0) return 1;
-        else if (fire[0][4] != 0) return 2;
-        else                      return 3;
-    })) {
+            /* See which type it is. */
+            if      (fire[0][2] != 0) return 0;
+            else if (fire[0][3] != 0) return 1;
+            else if (fire[0][4] != 0) return 2;
+            else                      return 3;
+        })) {
         SHOW_ERROR("Fire cells were not shifted left/center/right uniformly at random.");
     }
 }
@@ -276,27 +302,27 @@ PROVIDED_TEST("updateFire cools fire with correct probability.") {
     const double sameProb = 19.0 / 81.0;
 
     if (!ChiSquaredTesting::isClose({ noneProb, coolProb, sameProb }, [&] {
-        /* Clone the original fire and update it. */
-        auto fire = pattern;
-        updateFire(fire);
+            /* Clone the original fire and update it. */
+            auto fire = pattern;
+            updateFire(fire);
 
-        /* See which type it is. */
-        int found = 0;
-        int result = 0;
-        for (int col = 2; col <= 4; col++) {
-            if (fire[0][col] == 4) {
-                found++;
-                result = 1;
-            } else if (fire[0][col] == 5) {
-                found++;
-                result = 2;
+            /* See which type it is. */
+            int found = 0;
+            int result = 0;
+            for (int col = 2; col <= 4; col++) {
+                if (fire[0][col] == 4) {
+                    found++;
+                    result = 1;
+                } else if (fire[0][col] == 5) {
+                    found++;
+                    result = 2;
+                }
             }
-        }
-        if (found > 1) {
-            SHOW_ERROR("Heat was copied up to multiple locations.");
-        }
-        return result;
-    })) {
+            if (found > 1) {
+                SHOW_ERROR("Heat was copied up to multiple locations.");
+            }
+            return result;
+        })) {
         SHOW_ERROR("Fire cells were not cooled with probability 2/3.");
     }
 }
